@@ -8,7 +8,31 @@
         Title="MainWindow" Height="450" Width="800"
         Loaded="MainWindow_Loaded">
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="1*" />
+            <RowDefinition Height="7*" />
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*" />
+                <ColumnDefinition Width="1*" />
+                <ColumnDefinition Width="1*" />
+                <!-- <ColumnDefinition Width="3*" /> -->
+            </Grid.ColumnDefinitions>  
+
+            <Button Name="StartBtn"
+                Grid.Column="0"
+                Content="Start" />
+            <Button Name="StopBtn"
+                Grid.Column="1"
+                Content="Stop" />
+            <Button Name="ShowBtn"
+                Grid.Column="2"
+                Content="Show" />
+        </Grid>
         <DataGrid Name="VolumeGrid"
+            Grid.Row="1"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Stretch"
             Margin="0,0,0,0"

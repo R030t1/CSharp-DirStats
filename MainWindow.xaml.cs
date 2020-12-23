@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Management;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -104,6 +105,11 @@ namespace DirStats
                     //Root = di.RootDirectory.Name,
                 });
             }
+
+            // TODO: This will show mountpoints, we may need this
+            // info to skip loops.
+            //var mos = new ManagementObjectSearcher("SELECT * FROM Win32_Volume");
+            //foreach (var v in mos.Get()) { }
         }
     }
 }
