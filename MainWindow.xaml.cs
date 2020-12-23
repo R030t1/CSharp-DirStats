@@ -2,11 +2,13 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Management;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -81,17 +83,30 @@ namespace DirStats
     public partial class MainWindow : Window
     {
         public ObservableCollection<Volume> Volumes;
+        public string SaveFolder;
+        public BackgroundWorker Enumerator;
 
         public MainWindow()
         {
             InitializeComponent();
             Volumes = new ObservableCollection<Volume>();
+            SaveFolder = System.IO.Path.Combine(
+                    Environment.GetFolderPath(
+                        Environment.SpecialFolder.ApplicationData),
+                    "DirStats");
+            Directory.CreateDirectory(SaveFolder);
+
+            Enumerator = new BackgroundWorker();
+            Enumerator.WorkerReportsProgress = true;
+            Enumerator.WorkerSupportsCancellation = true;
+            Enumerator.DoWork += Enumerator_DoWork;
+            Enumerator.RunWorkerCompleted += Enumerator_RunWorkerCompleted;
+            Enumerator.ProgressChanged += Enumerator_ProgressChanged;
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             VolumeGrid.ItemsSource = Volumes;
-            
             foreach (var di in DriveInfo.GetDrives())
             {
                 Volumes.Add(new Volume {
@@ -102,14 +117,62 @@ namespace DirStats
                     Format = di.DriveFormat,
                     Size = di.TotalSize.FormatSize(2),
                     Free = di.TotalFreeSpace.FormatSize(2),
-                    //Root = di.RootDirectory.Name,
                 });
             }
 
-            // TODO: This will show mountpoints, we may need this
+            // TODO: This should show mountpoints, we may need this
             // info to skip loops.
             //var mos = new ManagementObjectSearcher("SELECT * FROM Win32_Volume");
             //foreach (var v in mos.Get()) { }
+        }
+
+        public void Start_Click(object sender, RoutedEventArgs e)
+        {
+            StartBtn.IsEnabled = false;
+            StopBtn.IsEnabled = true;
+            Enumerator.RunWorkerAsync();
+        }
+
+        public void Stop_Click(object sender, RoutedEventArgs e)
+        {
+            StartBtn.IsEnabled = true;
+            StopBtn.IsEnabled = false;
+            Enumerator.CancelAsync();
+        }
+
+        public void Show_Click(object sender, RoutedEventArgs e)
+        {
+            Process.Start(new ProcessStartInfo {
+                Arguments = SaveFolder,
+                FileName = "explorer.exe",
+            });
+        }
+
+        public void Enumerator_DoWork(object sender, DoWorkEventArgs e)
+        {
+            for (int i = 0; i <= 100; i += 1)
+            {
+                if (Enumerator.CancellationPending)
+                {
+                    Enumerator.ReportProgress(0);
+                    return;
+                }
+
+                // TODO: For progress, get total used and keep running
+                // sum of size of all files enumerated.
+                Enumerator.ReportProgress(i);
+                Thread.Sleep(10);
+            }
+        }
+
+        public void Enumerator_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+
+        }
+
+        public void Enumerator_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            ProgressBar.Value = e.ProgressPercentage;
         }
     }
 }

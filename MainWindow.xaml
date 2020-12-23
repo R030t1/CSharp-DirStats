@@ -23,16 +23,23 @@
 
             <Button Name="StartBtn"
                 Grid.Column="0"
-                Margin="10,10,10,10"
-                Content="Start" />
+                Margin="10,10,5,10"
+                Content="Start"
+                Click="Start_Click" />
             <Button Name="StopBtn"
-                Margin="10,10,10,10"
+                Margin="5,10,5,10"
                 Grid.Column="1"
-                Content="Stop" />
+                Content="Stop"
+                Click="Stop_Click"
+                IsEnabled="False" />
             <Button Name="ShowBtn"
-                Margin="10,10,10,10"
+                Margin="5,10,5,10"
                 Grid.Column="2"
-                Content="Show" />
+                Content="Show Output" 
+                Click="Show_Click" />
+            <ProgressBar Name="ProgressBar"
+                Margin="5,10,10,10"
+                Grid.Column="3" />
         </Grid>
         <DataGrid Name="VolumeGrid"
             Grid.Row="1"
