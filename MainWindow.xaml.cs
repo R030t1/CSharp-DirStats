@@ -167,7 +167,7 @@ namespace DirStats
 
         public void Enumerator_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-
+            Stop_Click(sender, new RoutedEventArgs());
         }
 
         public void Enumerator_ProgressChanged(object sender, ProgressChangedEventArgs e)
