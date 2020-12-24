@@ -230,9 +230,6 @@ namespace DirStats
                 //Console.WriteLine(e.Length + " " + e.FullName);
                 progress?.Report(e.Length);
             }
-            
-            // We don't get here.
-            Console.WriteLine("Done.");
         }
 
         public void Enumerator_DoWork(object sender, DoWorkEventArgs e)
@@ -257,19 +254,22 @@ namespace DirStats
                 }
             });
 
-            // Directory listing is synchronous and isn't a good fit for async.
+            // Directory listing is synchronous and isn't a good fit for async. I can
+            // get it to work, but it's not great.
             var cancel = new CancellationTokenSource();
             var t = new Thread(() => Enumerate(@"C:\", progress, cancel.Token));
             t.Start();
 
-            Console.WriteLine("After task creation");
             while (!Enumerator.CancellationPending) {
                 if (!t.IsAlive)
                     break;
-                Thread.Sleep(16 * 8); // ~2 timeslices. TODO: Better method,
-                // may need to ditch backgroundworker.
+                Thread.Sleep(16 * 16); // ~16 timeslices. TODO: Better method,
+                // may need to ditch backgroundworker. It does seem that this
+                // does not contribute to load. Load varies from ~30% to ~80%
+                // depending how much is in cache.
             }
             cancel.Cancel();
+            Enumerator.ReportProgress(100);
         }
 
         public void Enumerator_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
