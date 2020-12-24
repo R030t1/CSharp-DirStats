@@ -22,7 +22,7 @@ using System.Windows.Shapes;
 
 namespace DirStats
 {
-    public static class DirectoryExtension
+    /*public static class DirectoryExtension
     {
         // There are notable problems with this.
         // TODO: Check to see if a whole folder is skipped if 
@@ -42,8 +42,9 @@ namespace DirStats
                     yield return enumerator.Current;
             }
         }
-    }
-    public static class FormatExtension
+    }*/
+
+    public static class Extension
     {
         private const long OneKB = 1024;
         private const long OneMB = OneKB * 1024;
@@ -130,15 +131,24 @@ namespace DirStats
             VolumeGrid.ItemsSource = Volumes;
             foreach (var di in DriveInfo.GetDrives())
             {
-                Volumes.Add(new Volume {
-                    Analyze = true,
-                    Name = di.Name,
-                    Label = di.VolumeLabel,
-                    Type = di.DriveType,
-                    Format = di.DriveFormat,
-                    Size = di.TotalSize.FormatSize(2),
-                    Free = di.TotalFreeSpace.FormatSize(2),
-                });
+                try {
+                    Volumes.Add(new Volume {
+                        Analyze = true,
+                        Name = di.Name,
+                        Label = di.VolumeLabel,
+                        Type = di.DriveType,
+                        Format = di.DriveFormat,
+                        Size = di.TotalSize.FormatSize(2),
+                        Free = di.TotalFreeSpace.FormatSize(2),
+                    });
+                } catch {
+                    // Most likely FS is bad, could be others.
+                    Volumes.Add(new Volume {
+                        Analyze = false,
+                        Name = di.Name,
+                        Type = di.DriveType,
+                    });
+                }
             }
 
             // TODO: This should show mountpoints, we may need this
