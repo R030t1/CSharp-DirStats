@@ -22,7 +22,28 @@ using System.Windows.Shapes;
 
 namespace DirStats
 {
-    public static class Extension
+    public static class DirectoryExtension
+    {
+        // There are notable problems with this.
+        // TODO: Check to see if a whole folder is skipped if 
+        // a single file is inaccessible.
+        // TODO: Determine differences between this and the
+        // EnumerationOptions method.
+        public static IEnumerable<T> Walk<T>(this IEnumerable<T> source)
+        {
+            var enumerator = source.GetEnumerator();
+            bool? current = null;
+
+            while (current ?? true) {
+                try { current = enumerator.MoveNext(); }
+                catch { current = null; }
+
+                if (current ?? false)
+                    yield return enumerator.Current;
+            }
+        }
+    }
+    public static class FormatExtension
     {
         private const long OneKB = 1024;
         private const long OneMB = OneKB * 1024;
