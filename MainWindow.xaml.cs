@@ -215,7 +215,7 @@ namespace DirStats
             });
         }
 
-        public void EnumerateAsync(string path, IProgress<long> progress)
+        public void Enumerate(string path, IProgress<long> progress, CancellationToken token)
         {
             // Magic happens with all this async, may need to make reduce
             // queueing overhead and message passing.
@@ -225,6 +225,8 @@ namespace DirStats
                     RecurseSubdirectories = true,
                 }))
             {
+                if (token.IsCancellationRequested) // Could use Enumerator.CancellationRequested.
+                    break;
                 //Console.WriteLine(e.Length + " " + e.FullName);
                 progress?.Report(e.Length);
             }
@@ -233,7 +235,7 @@ namespace DirStats
             Console.WriteLine("Done.");
         }
 
-        public async void Enumerator_DoWork(object sender, DoWorkEventArgs e)
+        public void Enumerator_DoWork(object sender, DoWorkEventArgs e)
         {
             var vs = Volumes.Where(v => v.Analyze);
             long total = 0, n = 0;
@@ -242,16 +244,32 @@ namespace DirStats
 
             // Calculate total size of all volumes, store, progress update
             // returns number that is added to total.
+            long skip = 0;
             var progress = new Progress<long>(bytes => {
                 n += bytes;
-                double p = n / total;
-                Console.WriteLine(total + " " + n + " " + (total - n));
-                //Enumerator.ReportProgress((int)p);
+                if (skip++ % 100 == 0)
+                {
+                    // On my system p ranges from 0 to ~.81 with ~20% FS overhead.
+                    double p = (double)n / (double)total;
+                    p = p / .81;
+                    //Console.WriteLine(total + " " + n + " " + (total - n) + " " + p);
+                    Enumerator.ReportProgress((int)(p * 100));
+                }
             });
 
-            EnumerateAsync(@"C:\", progress);
-
+            // Directory listing is synchronous and isn't a good fit for async.
             var cancel = new CancellationTokenSource();
+            var t = new Thread(() => Enumerate(@"C:\", progress, cancel.Token));
+            t.Start();
+
+            Console.WriteLine("After task creation");
+            while (!Enumerator.CancellationPending) {
+                if (!t.IsAlive)
+                    break;
+                Thread.Sleep(16 * 8); // ~2 timeslices. TODO: Better method,
+                // may need to ditch backgroundworker.
+            }
+            cancel.Cancel();
         }
 
         public void Enumerator_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
