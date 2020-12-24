@@ -47,7 +47,7 @@
             VerticalAlignment="Stretch"
             Margin="0,0,0,0"
             CanUserAddRows="False"
-            CanUserDeleteRows="False"
-        />
+            CanUserDeleteRows="False">
+        </DataGrid>
     </Grid>
 </Window>

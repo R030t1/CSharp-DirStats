@@ -19,6 +19,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using static PInvoke.Kernel32;
 
 namespace DirStats
 {
@@ -72,6 +73,21 @@ namespace DirStats
         }
     }
 
+    public class DisplayAttribute : Attribute
+    {
+        public bool IsDisplayed;
+
+        public DisplayAttribute(bool display)
+        {
+            this.IsDisplayed = display;
+        }
+    }
+
+    public class DataGridDisplayBehavior
+    {
+
+    }
+
     public class Volume : INotifyPropertyChanged
     {
         private bool analyze;
@@ -80,7 +96,9 @@ namespace DirStats
         private DriveType type;
         private string format;
         private string size;
+        private long nsize;
         private string free;
+        private long nfree;
         //private string root;
 
         public bool Analyze { get => analyze; set { analyze = value; OnPropertyChanged(); }}
@@ -89,13 +107,27 @@ namespace DirStats
         public DriveType Type { get => type; set { type = value; OnPropertyChanged(); }}
         public string Format { get => format; set { format = value; OnPropertyChanged(); }}
         public string Size { get => size; set { size = value; OnPropertyChanged(); }}
+
+        [Display(false)]
+        public long NSize { get => nsize; set { nsize = value; OnPropertyChanged(); }}
         public string Free { get => free; set { free = value; OnPropertyChanged(); }}
+        [Display(false)]
+        public long NFree { get => nfree; set { nfree = value; OnPropertyChanged(); }}
         //public string Root { get => root; set { root = value; OnPropertyChanged(); }}
 
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string name = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+    }
+
+    public class EnumerationWorker : Progress<long>
+    {   
+
+        public void Run()
+        {
+
         }
     }
 
@@ -111,6 +143,8 @@ namespace DirStats
         public MainWindow()
         {
             InitializeComponent();
+            AllocConsole();
+
             Volumes = new ObservableCollection<Volume>();
             SaveFolder = System.IO.Path.Combine(
                     Environment.GetFolderPath(
@@ -139,7 +173,9 @@ namespace DirStats
                         Type = di.DriveType,
                         Format = di.DriveFormat,
                         Size = di.TotalSize.FormatSize(2),
+                        NSize = di.TotalSize,
                         Free = di.TotalFreeSpace.FormatSize(2),
+                        NFree = di.TotalFreeSpace,
                     });
                 } catch {
                     // Most likely FS is bad, could be others.
@@ -179,21 +215,43 @@ namespace DirStats
             });
         }
 
-        public void Enumerator_DoWork(object sender, DoWorkEventArgs e)
+        public void EnumerateAsync(string path, IProgress<long> progress)
         {
-            for (int i = 0; i <= 100; i += 1)
+            // Magic happens with all this async, may need to make reduce
+            // queueing overhead and message passing.
+            foreach (var e in new DirectoryInfo(path).EnumerateFiles("*",
+                new System.IO.EnumerationOptions {
+                    IgnoreInaccessible = true,
+                    RecurseSubdirectories = true,
+                }))
             {
-                if (Enumerator.CancellationPending)
-                {
-                    Enumerator.ReportProgress(0);
-                    return;
-                }
-
-                // TODO: For progress, get total used and keep running
-                // sum of size of all files enumerated.
-                Enumerator.ReportProgress(i);
-                Thread.Sleep(10);
+                //Console.WriteLine(e.Length + " " + e.FullName);
+                progress?.Report(e.Length);
             }
+            
+            // We don't get here.
+            Console.WriteLine("Done.");
+        }
+
+        public async void Enumerator_DoWork(object sender, DoWorkEventArgs e)
+        {
+            var vs = Volumes.Where(v => v.Analyze);
+            long total = 0, n = 0;
+            foreach (var v in vs)
+                total += (v.NSize - v.NFree);
+
+            // Calculate total size of all volumes, store, progress update
+            // returns number that is added to total.
+            var progress = new Progress<long>(bytes => {
+                n += bytes;
+                double p = n / total;
+                Console.WriteLine(total + " " + n + " " + (total - n));
+                //Enumerator.ReportProgress((int)p);
+            });
+
+            EnumerateAsync(@"C:\", progress);
+
+            var cancel = new CancellationTokenSource();
         }
 
         public void Enumerator_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
