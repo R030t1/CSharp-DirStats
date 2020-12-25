@@ -143,7 +143,7 @@ namespace DirStats
         public MainWindow()
         {
             InitializeComponent();
-            AllocConsole();
+            //AllocConsole();
 
             Volumes = new ObservableCollection<Volume>();
             SaveFolder = System.IO.Path.Combine(
@@ -234,42 +234,59 @@ namespace DirStats
 
         public void Enumerator_DoWork(object sender, DoWorkEventArgs e)
         {
+            // Calculate total size of all volumes, store, progress update
+            // returns number that is added to total.
             var vs = Volumes.Where(v => v.Analyze);
             long total = 0, n = 0;
             foreach (var v in vs)
                 total += (v.NSize - v.NFree);
 
-            // Calculate total size of all volumes, store, progress update
-            // returns number that is added to total.
             long skip = 0;
             var progress = new Progress<long>(bytes => {
                 n += bytes;
                 if (skip++ % 100 == 0)
                 {
                     // On my system p ranges from 0 to ~.81 with ~20% FS overhead.
+                    // Running as Administrator only sees ~.02% more files.
                     double p = (double)n / (double)total;
                     p = p / .81;
                     //Console.WriteLine(total + " " + n + " " + (total - n) + " " + p);
-                    Enumerator.ReportProgress((int)(p * 100));
+
+                    // Check below prevents in-flight reports to this object from throwing
+                    // when attempting to report on a closed BackgroundWorker.
+                    if (Enumerator.IsBusy)
+                        Enumerator.ReportProgress((int)(p * 100));
                 }
             });
 
             // Directory listing is synchronous and isn't a good fit for async. I can
             // get it to work, but it's not great.
             var cancel = new CancellationTokenSource();
-            var t = new Thread(() => Enumerate(@"C:\", progress, cancel.Token));
-            t.Start();
+
+            var nvs = vs.Count();
+            int nwork = 0, ncomp = 0;
+            ThreadPool.GetMinThreads(out nwork, out ncomp);
+            ThreadPool.SetMinThreads(nwork > nvs ? nwork : nvs, ncomp);
+            foreach (var v in vs)
+                // TODO: This assumes drive has a letter. Not all drives have one.
+                ThreadPool.QueueUserWorkItem(new WaitCallback(
+                    state => {
+                        Enumerate(@"\\.\" + v.Name, progress, cancel.Token);
+                        Interlocked.Decrement(ref nvs);
+                    }
+                ));
 
             while (!Enumerator.CancellationPending) {
-                if (!t.IsAlive)
+                if (nvs == 0) {
+                    Enumerator.ReportProgress(100);
                     break;
+                }
                 Thread.Sleep(16 * 16); // ~16 timeslices. TODO: Better method,
-                // may need to ditch backgroundworker. It does seem that this
+                // may need to ditch BackgroundWorker. It does seem that this
                 // does not contribute to load. Load varies from ~30% to ~80%
                 // depending how much is in cache.
             }
             cancel.Cancel();
-            Enumerator.ReportProgress(100);
         }
 
         public void Enumerator_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
