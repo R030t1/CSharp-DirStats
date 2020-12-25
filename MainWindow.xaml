@@ -5,8 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:DirStats"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800"
-        Loaded="MainWindow_Loaded">
+        Title="MainWindow" Height="450" Width="800">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition MinHeight="50" Height="1*" />
@@ -47,7 +46,8 @@
             VerticalAlignment="Stretch"
             Margin="0,0,0,0"
             CanUserAddRows="False"
-            CanUserDeleteRows="False">
+            CanUserDeleteRows="False"
+            Loaded="VolumeGrid_Loaded">
         </DataGrid>
     </Grid>
 </Window>

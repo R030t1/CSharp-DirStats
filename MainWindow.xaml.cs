@@ -159,8 +159,8 @@ namespace DirStats
             Enumerator.RunWorkerCompleted += Enumerator_RunWorkerCompleted;
             Enumerator.ProgressChanged += Enumerator_ProgressChanged;
         }
-
-        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        
+        private void VolumeGrid_Loaded(object sender, RoutedEventArgs e)
         {
             VolumeGrid.ItemsSource = Volumes;
             foreach (var di in DriveInfo.GetDrives())
